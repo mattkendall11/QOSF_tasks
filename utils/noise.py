@@ -1,5 +1,6 @@
 import random
-from qiskit import QuantumCircuit, Aer, transpile
+from qiskit import QuantumCircuit,\
+    transpile
 import numpy as np
 def apply_random_pauli(circuit, qubit):
     """Applies a random Pauli operator (X, Y, or Z) to the specified qubit."""
@@ -109,7 +110,8 @@ def decompose_to_basis(circuit: QuantumCircuit) -> QuantumCircuit:
                 decomposed_gate = gate.decompose()  # Decompose into the basic gate set
                 decomposed_circuit.append(decomposed_gate, qargs, cargs)
             except AttributeError:
-                print(f"Warning: Could not decompose gate {gate.name}")
+                None
+                #print(f"Warning: Could not decompose gate {gate.name}")
         else:
             # If the gate is already in the basis, append it directly
             decomposed_circuit.append(gate, qargs, cargs)
