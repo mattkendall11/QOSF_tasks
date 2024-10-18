@@ -45,25 +45,32 @@ def add_pauli_noise(circuit, p1, p2):
     return noisy_circuit
 
 
-
 def qft(circuit, n):
-    """Apply Quantum Fourier Transform (QFT) to the first n qubits in the circuit."""
+    """Apply Quantum Fourier Transform (QFT) to the first n qubits in the circuit, with debugging output."""
+    print("Applying QFT to the circuit")
     for i in range(n):
         # Apply Hadamard to the i-th qubit
+        print(f"Applying Hadamard gate to qubit {i}")
         circuit.h(i)
+
         # Apply controlled-phase rotations
         for j in range(i + 1, n):
             angle = np.pi / 2 ** (j - i)
+            print(f"Applying controlled-phase rotation (CP) with angle {angle} between qubits {j} and {i}")
             circuit.cp(angle, j, i)
 
     # Reverse the qubits at the end to match standard QFT order
+    print(f"Applying SWAP gates to reverse the qubit order for QFT")
     for i in range(n // 2):
         circuit.swap(i, n - i - 1)
 
 
 def inverse_qft(circuit, n):
-    """Apply inverse Quantum Fourier Transform (QFT†) to the first n qubits in the circuit."""
+    """Apply inverse Quantum Fourier Transform (QFT†) to the first n qubits in the circuit, with debugging output."""
+    print("Applying Inverse QFT to the circuit")
+
     # Reverse the swap operations
+    print(f"Reversing SWAP gates applied during QFT")
     for i in range(n // 2):
         circuit.swap(i, n - i - 1)
 
@@ -71,9 +78,10 @@ def inverse_qft(circuit, n):
     for i in range(n):
         for j in range(i + 1, n):
             angle = -np.pi / 2 ** (j - i)
+            print(f"Applying inverse controlled-phase rotation (CP†) with angle {angle} between qubits {j} and {i}")
             circuit.cp(angle, j, i)
+        print(f"Applying Hadamard gate to qubit {i}")
         circuit.h(i)
-
 
 def decompose_to_basis(circuit: QuantumCircuit) -> QuantumCircuit:
     """
@@ -123,77 +131,6 @@ def decompose_to_basis(circuit: QuantumCircuit) -> QuantumCircuit:
     return decomposed_circuit
 
 
-# def decompose_to_basis(circuit: QuantumCircuit) -> QuantumCircuit:
-#     basis_gates = ['cx', 'id', 'rz', 'sx', 'x']  # The target gate basis
-#     decomposed_circuit = QuantumCircuit(*circuit.qregs, *circuit.cregs)
-#
-#     for gate, qargs, cargs in circuit.data:
-#         if gate.name == 'h':  # Hadamard gate H
-#             # Decompose H into RZ, SX, X
-#             decomposed_circuit.rz(np.pi / 2, qargs[0])
-#             decomposed_circuit.sx(qargs[0])
-#             decomposed_circuit.rz(np.pi / 2, qargs[0])
-#
-#         elif gate.name == 'z':  # Pauli-Z gate
-#             # Z = RZ(pi)
-#             decomposed_circuit.rz(np.pi, qargs[0])
-#
-#         elif gate.name == 'y':  # Pauli-Y gate
-#             # Y = Z.X.Z
-#             decomposed_circuit.rz(np.pi, qargs[0])
-#             decomposed_circuit.sx(qargs[0])
-#             decomposed_circuit.rz(np.pi, qargs[0])
-#
-#         elif gate.name == 't':  # T gate
-#             # T = RZ(pi/4)
-#             decomposed_circuit.rz(np.pi / 4, qargs[0])
-#
-#         elif gate.name == 'tdg':  # Tdg gate (inverse of T)
-#             # Tdg = RZ(-pi/4)
-#             decomposed_circuit.rz(-np.pi / 4, qargs[0])
-#
-#         elif gate.name not in basis_gates:
-#             # Try using Qiskit's built-in decomposition if possible
-#             try:
-#                 decomposed_gate = gate.decompose()  # Decompose into the basic gate set
-#                 decomposed_circuit.append(decomposed_gate, qargs, cargs)
-#             except AttributeError:
-#                 None
-#                 #print(f"Warning: Could not decompose gate {gate.name}")
-#         else:
-#             # If the gate is already in the basis, append it directly
-#             decomposed_circuit.append(gate, qargs, cargs)
-#
-#     return decomposed_circuit
-
-# def quantum_sum(a, b, num_qubits):
-#     """
-#     Add two numbers `a` and `b` using the Draper adder algorithm.
-#     This function assumes that the binary representations of `a` and `b`
-#     fit within `num_qubits` qubits.
-#     """
-#     circuit = QuantumCircuit(num_qubits, num_qubits)  # Added num_qubits classical bits for measurement
-#
-#
-#     for i in range(num_qubits):
-#         if (a >> i) & 1:
-#             circuit.x(i)
-#
-#     qft(circuit, num_qubits)
-#
-#
-#     for i in range(num_qubits):
-#         if (b >> i) & 1:
-#             for j in range(i, num_qubits):
-#                 angle = np.pi / 2**(j - i)
-#                 circuit.p(angle, j)
-#
-#
-#     inverse_qft(circuit, num_qubits)
-#
-#     circuit.measure(range(num_qubits), range(num_qubits))  # Add this line to measure qubits into classical bits
-#
-#     return circuit
 
 def quantum_sum(a, b, num_qubits):
     """
@@ -202,7 +139,7 @@ def quantum_sum(a, b, num_qubits):
     fit within `num_qubits` qubits.
     """
     # Ensure we have enough qubits for both numbers and carry bits
-    total_qubits = num_qubits * 2
+    total_qubits = num_qubits  # You only need num_qubits for both numbers in this case
     circuit = QuantumCircuit(total_qubits, num_qubits)  # Only num_qubits classical bits for measurement
 
     # Load the first number 'a' into the circuit
@@ -216,9 +153,9 @@ def quantum_sum(a, b, num_qubits):
     # Add the second number 'b' using controlled phase rotations
     for i in range(num_qubits):
         if (b >> i) & 1:
-            for j in range(num_qubits):
+            for j in range(i, num_qubits):
                 angle = np.pi / 2**(j - i)
-                circuit.cp(angle, j + num_qubits, i)  # Shifted to apply phase to the second half of the circuit
+                circuit.p(angle, j)  # Apply phase to qubits holding the result (not shifted by num_qubits)
 
     # Apply inverse QFT
     inverse_qft(circuit, num_qubits)

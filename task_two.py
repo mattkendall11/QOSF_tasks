@@ -10,11 +10,11 @@ from utils.noise import add_pauli_noise, decompose_to_basis, quantum_sum
 script that takes a draper adder circuit ,decomposes to basis then adds noise
 '''
 
-circuit = quantum_sum(2,3,5)
+circuit = quantum_sum(1,2,5)
 
 basis_circuit = decompose_to_basis(circuit)
 
-noisy_circuit = add_pauli_noise(basis_circuit, 0,0)
+noisy_circuit = add_pauli_noise(basis_circuit, 1,1)
 
 simulator = Aer.get_backend('qasm_simulator')
 
