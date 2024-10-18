@@ -76,47 +76,124 @@ def inverse_qft(circuit, n):
 
 
 def decompose_to_basis(circuit: QuantumCircuit) -> QuantumCircuit:
-    basis_gates = ['cx', 'id', 'rz', 'sx', 'x']  # The target gate basis
+    """
+    Decomposes a quantum circuit into a specified basis set of gates.
+
+    Args:
+        circuit (QuantumCircuit): The input quantum circuit to decompose.
+
+    Returns:
+        QuantumCircuit: The decomposed circuit in the target gate basis.
+    """
+    # Define the target gate basis
+    basis_gates = {'cx', 'id', 'rz', 'sx', 'x', 'cp', 'p', 'measure'}  # Added cp, p, measure
+
+    # Initialize a new circuit with the same registers
     decomposed_circuit = QuantumCircuit(*circuit.qregs, *circuit.cregs)
 
+    # Mapping of gate names to their manual decompositions
+    decomposition_map = {
+        'h': lambda qc, q: [qc.rz(np.pi / 2, q), qc.sx(q), qc.rz(np.pi / 2, q)],
+        'z': lambda qc, q: [qc.rz(np.pi, q)],
+        'y': lambda qc, q: [qc.rz(np.pi, q), qc.sx(q), qc.rz(np.pi, q)],
+        't': lambda qc, q: [qc.rz(np.pi / 4, q)],
+        'tdg': lambda qc, q: [qc.rz(-np.pi / 4, q)],
+        'swap': lambda qc, q: [qc.cx(q[0], q[1]), qc.cx(q[1], q[0]), qc.cx(q[0], q[1])]
+    }
+
+    # Iterate over each gate in the original circuit
     for gate, qargs, cargs in circuit.data:
-        if gate.name == 'h':  # Hadamard gate H
-            # Decompose H into RZ, SX, X
-            decomposed_circuit.rz(np.pi / 2, qargs[0])
-            decomposed_circuit.sx(qargs[0])
-            decomposed_circuit.rz(np.pi / 2, qargs[0])
-
-        elif gate.name == 'z':  # Pauli-Z gate
-            # Z = RZ(pi)
-            decomposed_circuit.rz(np.pi, qargs[0])
-
-        elif gate.name == 'y':  # Pauli-Y gate
-            # Y = Z.X.Z
-            decomposed_circuit.rz(np.pi, qargs[0])
-            decomposed_circuit.sx(qargs[0])
-            decomposed_circuit.rz(np.pi, qargs[0])
-
-        elif gate.name == 't':  # T gate
-            # T = RZ(pi/4)
-            decomposed_circuit.rz(np.pi / 4, qargs[0])
-
-        elif gate.name == 'tdg':  # Tdg gate (inverse of T)
-            # Tdg = RZ(-pi/4)
-            decomposed_circuit.rz(-np.pi / 4, qargs[0])
-
-        elif gate.name not in basis_gates:
-            # Try using Qiskit's built-in decomposition if possible
-            try:
-                decomposed_gate = gate.decompose()  # Decompose into the basic gate set
-                decomposed_circuit.append(decomposed_gate, qargs, cargs)
-            except AttributeError:
-                None
-                #print(f"Warning: Could not decompose gate {gate.name}")
-        else:
-            # If the gate is already in the basis, append it directly
+        # If the gate is already in the basis, append it directly
+        if gate.name in basis_gates:
             decomposed_circuit.append(gate, qargs, cargs)
 
+        # If the gate is in the manual decomposition map, apply the decomposition
+        elif gate.name in decomposition_map:
+            for op in decomposition_map[gate.name](decomposed_circuit, qargs):
+                pass  # Each operation is appended within the lambda function
+
+        # Otherwise, try Qiskit's built-in decomposition
+        else:
+            try:
+                decomposed_gate = gate.decompose()
+                decomposed_circuit.append(decomposed_gate, qargs, cargs)
+            except AttributeError:
+                print(f"Warning: Gate '{gate.name}' could not be decomposed.")
+
     return decomposed_circuit
+
+
+# def decompose_to_basis(circuit: QuantumCircuit) -> QuantumCircuit:
+#     basis_gates = ['cx', 'id', 'rz', 'sx', 'x']  # The target gate basis
+#     decomposed_circuit = QuantumCircuit(*circuit.qregs, *circuit.cregs)
+#
+#     for gate, qargs, cargs in circuit.data:
+#         if gate.name == 'h':  # Hadamard gate H
+#             # Decompose H into RZ, SX, X
+#             decomposed_circuit.rz(np.pi / 2, qargs[0])
+#             decomposed_circuit.sx(qargs[0])
+#             decomposed_circuit.rz(np.pi / 2, qargs[0])
+#
+#         elif gate.name == 'z':  # Pauli-Z gate
+#             # Z = RZ(pi)
+#             decomposed_circuit.rz(np.pi, qargs[0])
+#
+#         elif gate.name == 'y':  # Pauli-Y gate
+#             # Y = Z.X.Z
+#             decomposed_circuit.rz(np.pi, qargs[0])
+#             decomposed_circuit.sx(qargs[0])
+#             decomposed_circuit.rz(np.pi, qargs[0])
+#
+#         elif gate.name == 't':  # T gate
+#             # T = RZ(pi/4)
+#             decomposed_circuit.rz(np.pi / 4, qargs[0])
+#
+#         elif gate.name == 'tdg':  # Tdg gate (inverse of T)
+#             # Tdg = RZ(-pi/4)
+#             decomposed_circuit.rz(-np.pi / 4, qargs[0])
+#
+#         elif gate.name not in basis_gates:
+#             # Try using Qiskit's built-in decomposition if possible
+#             try:
+#                 decomposed_gate = gate.decompose()  # Decompose into the basic gate set
+#                 decomposed_circuit.append(decomposed_gate, qargs, cargs)
+#             except AttributeError:
+#                 None
+#                 #print(f"Warning: Could not decompose gate {gate.name}")
+#         else:
+#             # If the gate is already in the basis, append it directly
+#             decomposed_circuit.append(gate, qargs, cargs)
+#
+#     return decomposed_circuit
+
+# def quantum_sum(a, b, num_qubits):
+#     """
+#     Add two numbers `a` and `b` using the Draper adder algorithm.
+#     This function assumes that the binary representations of `a` and `b`
+#     fit within `num_qubits` qubits.
+#     """
+#     circuit = QuantumCircuit(num_qubits, num_qubits)  # Added num_qubits classical bits for measurement
+#
+#
+#     for i in range(num_qubits):
+#         if (a >> i) & 1:
+#             circuit.x(i)
+#
+#     qft(circuit, num_qubits)
+#
+#
+#     for i in range(num_qubits):
+#         if (b >> i) & 1:
+#             for j in range(i, num_qubits):
+#                 angle = np.pi / 2**(j - i)
+#                 circuit.p(angle, j)
+#
+#
+#     inverse_qft(circuit, num_qubits)
+#
+#     circuit.measure(range(num_qubits), range(num_qubits))  # Add this line to measure qubits into classical bits
+#
+#     return circuit
 
 def quantum_sum(a, b, num_qubits):
     """
@@ -124,29 +201,29 @@ def quantum_sum(a, b, num_qubits):
     This function assumes that the binary representations of `a` and `b`
     fit within `num_qubits` qubits.
     """
-    circuit = QuantumCircuit(num_qubits, num_qubits)  # Added num_qubits classical bits for measurement
+    # Ensure we have enough qubits for both numbers and carry bits
+    total_qubits = num_qubits * 2
+    circuit = QuantumCircuit(total_qubits, num_qubits)  # Only num_qubits classical bits for measurement
 
-
+    # Load the first number 'a' into the circuit
     for i in range(num_qubits):
         if (a >> i) & 1:
             circuit.x(i)
 
+    # Apply QFT to prepare for addition
     qft(circuit, num_qubits)
 
-
+    # Add the second number 'b' using controlled phase rotations
     for i in range(num_qubits):
         if (b >> i) & 1:
-            for j in range(i, num_qubits):
+            for j in range(num_qubits):
                 angle = np.pi / 2**(j - i)
-                circuit.p(angle, j)
+                circuit.cp(angle, j + num_qubits, i)  # Shifted to apply phase to the second half of the circuit
 
-
+    # Apply inverse QFT
     inverse_qft(circuit, num_qubits)
 
-    circuit.measure(range(num_qubits), range(num_qubits))  # Add this line to measure qubits into classical bits
+    # Measure the output qubits
+    circuit.measure(range(num_qubits), range(num_qubits))
 
     return circuit
-
-
-
-print(random.random())
