@@ -41,7 +41,7 @@ def add_pauli_noise(circuit, p1, p2):
             if random.random() < p2:
                 noisy_circuit = apply_random_pauli(noisy_circuit, qargs[0])
                 noisy_circuit = apply_random_pauli(noisy_circuit, qargs[1])
-
+    noisy_circuit.measure(range(circuit.num_qubits), range(circuit.num_qubits))
     return noisy_circuit
 
 
@@ -124,30 +124,29 @@ def quantum_sum(a, b, num_qubits):
     This function assumes that the binary representations of `a` and `b`
     fit within `num_qubits` qubits.
     """
-    # Initialize quantum circuit with enough qubits to hold both numbers
-    circuit = QuantumCircuit(num_qubits)
+    circuit = QuantumCircuit(num_qubits, num_qubits)  # Added num_qubits classical bits for measurement
 
-    # Step 1: Initialize qubits in the state representing the number `a`
-    # The number `a` is encoded directly in the computational basis
+
     for i in range(num_qubits):
         if (a >> i) & 1:
             circuit.x(i)
 
-    # Step 2: Apply QFT to the qubits (we'll sum the number `b` in the phase of these qubits)
     qft(circuit, num_qubits)
 
-    # Step 3: Add the number `b` by modifying the phase of the qubits
-    # This is done by applying controlled-RZ rotations corresponding to the bits of `b`
+
     for i in range(num_qubits):
         if (b >> i) & 1:
-            # Apply phase shift to the qubits corresponding to 2^i * b
             for j in range(i, num_qubits):
                 angle = np.pi / 2**(j - i)
                 circuit.p(angle, j)
 
-    # Step 4: Apply inverse QFT to transform the result back to the computational basis
+
     inverse_qft(circuit, num_qubits)
+
+    circuit.measure(range(num_qubits), range(num_qubits))  # Add this line to measure qubits into classical bits
 
     return circuit
 
 
+
+print(random.random())
